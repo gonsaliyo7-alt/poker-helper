@@ -67,6 +67,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkKey = async () => {
       const storedKey = localStorage.getItem('GEMINI_API_KEY');
+      console.log('🔹 checkKey: storedKey found?', !!storedKey);
       if (storedKey) {
         setHasKey(true);
       } else {
@@ -77,10 +78,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleSaveKey = (key: string) => {
+    console.log('🔹 handleSaveKey called with length:', key.length);
     if (key.trim().length > 0) {
       localStorage.setItem('GEMINI_API_KEY', key.trim());
       setHasKey(true);
       setErrorStatus(null);
+      console.log('✅ API Key saved to localStorage and hasKey set to true');
+    } else {
+      console.warn('⚠️ handleSaveKey received empty string');
     }
   };
 
@@ -95,32 +100,43 @@ const App: React.FC = () => {
   };
 
   const toggleCardSelection = (card: Card) => {
+    console.log('🔹 toggleCardSelection:', card);
     const isInHand = state.hand.some(c => c.id === card.id);
     const isInBoard = state.board.some(c => c.id === card.id);
     if (isInHand) {
+      console.log('   Removing from hand');
       setState(prev => ({ ...prev, hand: prev.hand.filter(c => c.id !== card.id) }));
       return;
     }
     if (isInBoard) {
+      console.log('   Removing from board');
       setState(prev => ({ ...prev, board: prev.board.filter(c => c.id !== card.id) }));
       return;
     }
     if (state.hand.length < 2) {
+      console.log('   Adding to hand');
       setState(prev => ({ ...prev, hand: [...prev.hand, card] }));
     } else if (state.board.length < 5) {
+      console.log('   Adding to board');
       setState(prev => ({ ...prev, board: [...prev.board, card] }));
     }
     setErrorStatus(null);
   };
 
   const runAnalysis = useCallback(async () => {
-    if (state.hand.length < 2) return;
+    console.log('🔹 runAnalysis triggering...');
+    if (state.hand.length < 2) {
+      console.log('   Hand not full yet');
+      return;
+    }
     const apiKey = localStorage.getItem('GEMINI_API_KEY');
     if (!apiKey) {
+      console.warn('   No API Key found in localStorage during runAnalysis');
       setHasKey(false);
       return;
     }
 
+    console.log('   Starting analysis with API Key (masked):', apiKey.substring(0, 4) + '...');
     setState(prev => ({ ...prev, isAnalyzing: true }));
     setErrorStatus(null);
     try {
@@ -133,8 +149,10 @@ const App: React.FC = () => {
         state.opponentProfile,
         apiKey
       );
+      console.log('✅ Analysis success:', result);
       setState(prev => ({ ...prev, analysis: result, isAnalyzing: false }));
     } catch (error: any) {
+      console.error("Error en análisis:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
       if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API Key is required")) {
         setHasKey(false);
@@ -146,6 +164,18 @@ const App: React.FC = () => {
       }
     }
   }, [state.hand, state.board, state.position, state.playerCount, state.stackSize, state.opponentProfile]);
+
+  useEffect(() => {
+    if (state.hand.length === 2 && hasKey && activeMode === 'calculator') {
+      console.log('🔹 EFFECT TRIGGER: Hand full, calling runAnalysis');
+      runAnalysis();
+    } else {
+      // Clear analysis if hand is cleared (optional, or keep generic state clear)
+      if (state.hand.length < 2) {
+        setState(prev => ({ ...prev, analysis: null }));
+      }
+    }
+  }, [state.hand, state.board, state.position, state.playerCount, state.stackSize, state.opponentProfile, runAnalysis, hasKey, activeMode]);
 
   if (hasKey === false) {
     return (
@@ -308,6 +338,16 @@ const App: React.FC = () => {
           <aside className="lg:col-span-4 space-y-6">
             <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-white/10 shadow-2xl min-h-[550px] flex flex-col relative overflow-hidden">
               <h2 className="text-lg font-black text-yellow-400 mb-8 tracking-tighter">ANÁLISIS GTO</h2>
+
+              {errorStatus && (
+                <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl mb-6 text-center animate-in fade-in slide-in-from-top-2">
+                  <p className="text-red-200 text-xs font-bold">
+                    {errorStatus === 'quota' ? '⚠️ Cuota agotada. Intenta más tarde.' :
+                      errorStatus === 'auth' ? '⚠️ Error de autenticación. Verifica tu API Key.' :
+                        '⚠️ Ocurrió un error al analizar la mano. Intenta de nuevo.'}
+                  </p>
+                </div>
+              )}
 
               {state.isAnalyzing ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-6">
