@@ -94,6 +94,25 @@ const App: React.FC = () => {
     if (key) handleSaveKey(key);
   };
 
+  const toggleCardSelection = (card: Card) => {
+    const isInHand = state.hand.some(c => c.id === card.id);
+    const isInBoard = state.board.some(c => c.id === card.id);
+    if (isInHand) {
+      setState(prev => ({ ...prev, hand: prev.hand.filter(c => c.id !== card.id) }));
+      return;
+    }
+    if (isInBoard) {
+      setState(prev => ({ ...prev, board: prev.board.filter(c => c.id !== card.id) }));
+      return;
+    }
+    if (state.hand.length < 2) {
+      setState(prev => ({ ...prev, hand: [...prev.hand, card] }));
+    } else if (state.board.length < 5) {
+      setState(prev => ({ ...prev, board: [...prev.board, card] }));
+    }
+    setErrorStatus(null);
+  };
+
   const runAnalysis = useCallback(async () => {
     if (state.hand.length < 2) return;
     const apiKey = localStorage.getItem('GEMINI_API_KEY');
