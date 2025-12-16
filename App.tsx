@@ -66,60 +66,58 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkKey = async () => {
-      // @ts-ignore
-      const selected = await window.aistudio.hasSelectedApiKey();
-      setHasKey(selected);
+      const storedKey = localStorage.getItem('GEMINI_API_KEY');
+      if (storedKey) {
+        setHasKey(true);
+      } else {
+        setHasKey(false);
+      }
     };
     checkKey();
   }, []);
 
-  const handleOpenKey = async () => {
-    try {
-      // @ts-ignore
-      await window.aistudio.openSelectKey();
+  const handleSaveKey = (key: string) => {
+    if (key.trim().length > 0) {
+      localStorage.setItem('GEMINI_API_KEY', key.trim());
       setHasKey(true);
       setErrorStatus(null);
-    } catch (e) {
-      console.error("Error al abrir selector de clave", e);
     }
   };
 
-  const toggleCardSelection = (card: Card) => {
-    const isInHand = state.hand.some(c => c.id === card.id);
-    const isInBoard = state.board.some(c => c.id === card.id);
-    if (isInHand) {
-      setState(prev => ({ ...prev, hand: prev.hand.filter(c => c.id !== card.id) }));
-      return;
-    }
-    if (isInBoard) {
-      setState(prev => ({ ...prev, board: prev.board.filter(c => c.id !== card.id) }));
-      return;
-    }
-    if (state.hand.length < 2) {
-      setState(prev => ({ ...prev, hand: [...prev.hand, card] }));
-    } else if (state.board.length < 5) {
-      setState(prev => ({ ...prev, board: [...prev.board, card] }));
-    }
-    setErrorStatus(null);
+  const clearKey = () => {
+    localStorage.removeItem('GEMINI_API_KEY');
+    setHasKey(false);
+  };
+
+  const handleOpenKey = () => {
+    const key = prompt("Por favor ingresa tu Gemini API Key:");
+    if (key) handleSaveKey(key);
   };
 
   const runAnalysis = useCallback(async () => {
     if (state.hand.length < 2) return;
+    const apiKey = localStorage.getItem('GEMINI_API_KEY');
+    if (!apiKey) {
+      setHasKey(false);
+      return;
+    }
+
     setState(prev => ({ ...prev, isAnalyzing: true }));
     setErrorStatus(null);
     try {
       const result = await analyzePokerHand(
-        state.hand, 
-        state.board, 
-        state.position, 
-        state.playerCount, 
+        state.hand,
+        state.board,
+        state.position,
+        state.playerCount,
         state.stackSize,
-        state.opponentProfile
+        state.opponentProfile,
+        apiKey
       );
       setState(prev => ({ ...prev, analysis: result, isAnalyzing: false }));
     } catch (error: any) {
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      if (error?.message?.includes("Requested entity was not found")) {
+      if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API Key is required")) {
         setHasKey(false);
         setErrorStatus('auth');
       } else if (error instanceof QuotaError) {
@@ -130,11 +128,6 @@ const App: React.FC = () => {
     }
   }, [state.hand, state.board, state.position, state.playerCount, state.stackSize, state.opponentProfile]);
 
-  useEffect(() => {
-    if (state.hand.length === 2 && hasKey && activeMode === 'calculator') runAnalysis();
-    else setState(prev => ({ ...prev, analysis: null }));
-  }, [state.hand, state.board, state.position, state.playerCount, state.stackSize, state.opponentProfile, runAnalysis, hasKey, activeMode]);
-
   if (hasKey === false) {
     return (
       <div className="min-h-screen bg-emerald-950 flex items-center justify-center p-6 text-center">
@@ -143,23 +136,37 @@ const App: React.FC = () => {
           <div className="space-y-4">
             <h2 className="text-2xl font-black text-white">Configuración Requerida</h2>
             <p className="text-emerald-300/60 text-sm leading-relaxed">
-              Para utilizar la IA de Poker Genius, necesitas configurar tu propia API Key. Es gratis y se guarda de forma segura.
+              Para utilizar la IA de Poker Genius, necesitas configurar tu propia API Key de Google Gemini.
+              <br /><br />
+              Tu clave se guardará localmente en tu navegador.
             </p>
-            <a 
-              href="https://ai.google.dev/gemini-api/docs/billing" 
-              target="_blank" 
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-[10px] text-yellow-400/50 hover:text-yellow-400 underline uppercase tracking-widest font-bold block"
             >
-              Documentación de Facturación ↗
+              Obtener API Key Gratis ↗
             </a>
           </div>
-          <button 
-            onClick={handleOpenKey}
-            className="w-full py-5 bg-yellow-400 text-emerald-950 font-black rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest"
-          >
-            Configurar API Key
-          </button>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const input = (e.currentTarget.elements.namedItem('apiKey') as HTMLInputElement).value;
+            handleSaveKey(input);
+          }} className="space-y-4">
+            <input
+              type="password"
+              name="apiKey"
+              placeholder="Pegar API Key aquí..."
+              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-yellow-400/50"
+            />
+            <button
+              type="submit"
+              className="w-full py-5 bg-yellow-400 text-emerald-950 font-black rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest"
+            >
+              Guardar y Continuar
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -178,19 +185,19 @@ const App: React.FC = () => {
             <p className="text-emerald-300/60 text-xs font-medium">Mentor de Estrategia e IA GTO</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
-            <button onClick={handleOpenKey} className="p-2 text-emerald-300 hover:text-white transition-colors text-xs font-bold mr-2">
-                🔑 Key
-            </button>
-            <button onClick={() => setShowGlossary(!showGlossary)} className="p-2 text-emerald-300 hover:text-white transition-colors" title="Ayuda y Glosario">
-                <span className="text-xl">📖</span>
-            </button>
-            <nav className="flex bg-black/30 p-1 rounded-xl border border-white/5">
-                <button onClick={() => setActiveMode('calculator')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'calculator' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Calculadora</button>
-                <button onClick={() => setActiveMode('training')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'training' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Entrenamiento</button>
-                <button onClick={() => setActiveMode('importer')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'importer' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Analista</button>
-            </nav>
+          <button onClick={clearKey} className="p-2 text-emerald-300 hover:text-white transition-colors text-xs font-bold mr-2" title="Cambiar API Key">
+            🔑 Key
+          </button>
+          <button onClick={() => setShowGlossary(!showGlossary)} className="p-2 text-emerald-300 hover:text-white transition-colors" title="Ayuda y Glosario">
+            <span className="text-xl">📖</span>
+          </button>
+          <nav className="flex bg-black/30 p-1 rounded-xl border border-white/5">
+            <button onClick={() => setActiveMode('calculator')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'calculator' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Calculadora</button>
+            <button onClick={() => setActiveMode('training')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'training' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Entrenamiento</button>
+            <button onClick={() => setActiveMode('importer')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'importer' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Analista</button>
+          </nav>
         </div>
       </header>
 
@@ -199,7 +206,7 @@ const App: React.FC = () => {
           <div className="lg:col-span-8 space-y-6">
             <section className="bg-emerald-900/40 p-4 sm:p-6 rounded-3xl border border-white/5 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400/80">Baraja de Selección</h2>
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400/80">Baraja de Selección</h2>
               </div>
               <div className="poker-grid">
                 {FULL_DECK.map(card => {
@@ -211,54 +218,54 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <section className="bg-emerald-800/20 p-5 rounded-3xl border border-white/5 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Variables de Mesa</h3>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold">
-                        <span>Jugadores: <span className="text-yellow-400">{state.playerCount}</span></span>
-                    </div>
-                    <input type="range" min="2" max="9" step="1" value={state.playerCount} onChange={(e) => handlePlayerCountChange(parseInt(e.target.value))} className="w-full h-1.5 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
-                  </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Variables de Mesa</h3>
+                </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold">
-                        <span>Stack: <span className="text-yellow-400">{state.stackSize} BB</span></span>
-                    </div>
-                    <input type="range" min="1" max="250" step="1" value={state.stackSize} onChange={(e) => handleStackSizeChange(parseInt(e.target.value))} className="w-full h-1.5 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span>Jugadores: <span className="text-yellow-400">{state.playerCount}</span></span>
                   </div>
+                  <input type="range" min="2" max="9" step="1" value={state.playerCount} onChange={(e) => handlePlayerCountChange(parseInt(e.target.value))} className="w-full h-1.5 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
+                </div>
 
-                  <div className="pt-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        {(isHeadsUp ? ['dealer', 'bigBlind'] : ['early', 'middle', 'late', 'dealer', 'smallBlind', 'bigBlind']).map(p => (
-                            <button key={p} onClick={() => setState(s => ({...s, position: s.position === p ? null : p as Position}))} className={`py-2 rounded-xl text-[9px] font-bold border transition-all ${state.position === p ? 'bg-yellow-400 text-emerald-950 border-yellow-300 shadow-lg' : 'bg-white/5 border-white/10 text-emerald-100/60'}`}>
-                                {p.toUpperCase()}
-                            </button>
-                        ))}
-                      </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span>Stack: <span className="text-yellow-400">{state.stackSize} BB</span></span>
                   </div>
+                  <input type="range" min="1" max="250" step="1" value={state.stackSize} onChange={(e) => handleStackSizeChange(parseInt(e.target.value))} className="w-full h-1.5 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
+                </div>
+
+                <div className="pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {(isHeadsUp ? ['dealer', 'bigBlind'] : ['early', 'middle', 'late', 'dealer', 'smallBlind', 'bigBlind']).map(p => (
+                      <button key={p} onClick={() => setState(s => ({ ...s, position: s.position === p ? null : p as Position }))} className={`py-2 rounded-xl text-[9px] font-bold border transition-all ${state.position === p ? 'bg-yellow-400 text-emerald-950 border-yellow-300 shadow-lg' : 'bg-white/5 border-white/10 text-emerald-100/60'}`}>
+                        {p.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </section>
 
               <section className="bg-emerald-800/20 p-5 rounded-3xl border border-white/5 space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-2">Perfil del Oponente</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.keys(PROFILE_INFO).map(prof => (
-                        <button 
-                          key={prof} 
-                          onClick={() => setState(s => ({...s, opponentProfile: prof as OpponentProfile}))} 
-                          className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all group ${state.opponentProfile === prof ? 'bg-emerald-500 border-emerald-400 shadow-lg' : 'bg-white/5 border-white/10 opacity-60 hover:opacity-100'}`}
-                        >
-                            <span className="text-2xl transition-transform group-hover:scale-110">{PROFILE_ICONS[prof]}</span>
-                            <span className="text-[10px] font-black uppercase text-white">{prof}</span>
-                        </button>
-                    ))}
-                  </div>
-                  {state.opponentProfile && (
-                    <p className="text-[10px] text-emerald-300/70 italic text-center px-2">
-                      {PROFILE_INFO[state.opponentProfile]}
-                    </p>
-                  )}
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-2">Perfil del Oponente</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.keys(PROFILE_INFO).map(prof => (
+                    <button
+                      key={prof}
+                      onClick={() => setState(s => ({ ...s, opponentProfile: prof as OpponentProfile }))}
+                      className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all group ${state.opponentProfile === prof ? 'bg-emerald-500 border-emerald-400 shadow-lg' : 'bg-white/5 border-white/10 opacity-60 hover:opacity-100'}`}
+                    >
+                      <span className="text-2xl transition-transform group-hover:scale-110">{PROFILE_ICONS[prof]}</span>
+                      <span className="text-[10px] font-black uppercase text-white">{prof}</span>
+                    </button>
+                  ))}
+                </div>
+                {state.opponentProfile && (
+                  <p className="text-[10px] text-emerald-300/70 italic text-center px-2">
+                    {PROFILE_INFO[state.opponentProfile]}
+                  </p>
+                )}
               </section>
             </div>
 
@@ -280,47 +287,47 @@ const App: React.FC = () => {
           </div>
 
           <aside className="lg:col-span-4 space-y-6">
-              <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-white/10 shadow-2xl min-h-[550px] flex flex-col relative overflow-hidden">
-                  <h2 className="text-lg font-black text-yellow-400 mb-8 tracking-tighter">ANÁLISIS GTO</h2>
-                  
-                  {state.isAnalyzing ? (
-                      <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                          <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                          <p className="text-emerald-500 font-black text-[10px] uppercase tracking-widest animate-pulse">Consultando Oráculo...</p>
-                      </div>
-                  ) : state.analysis ? (
-                      <div className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10">
-                          <div className="relative flex justify-center">
-                              <div className="text-center">
-                                  <span className="text-5xl font-black text-white">{Math.round(state.analysis.probability * 100)}%</span>
-                                  <p className="text-[10px] font-bold text-emerald-400 uppercase mt-1">Equity Estimada</p>
-                              </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
-                                  <span className="text-[8px] font-black text-white/40 uppercase block mb-1">Acción</span>
-                                  <span className="text-sm font-black text-yellow-400">{state.analysis.suggestedAction}</span>
-                              </div>
-                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
-                                  <span className="text-[8px] font-black text-white/40 uppercase block mb-1">Tamaño</span>
-                                  <span className="text-sm font-black text-white">{state.analysis.betSize}</span>
-                              </div>
-                          </div>
-                          <div className={`py-3 px-6 rounded-xl text-center font-black text-sm transition-all ${state.analysis.advice === 'CONTINUE' ? 'bg-emerald-600' : state.analysis.advice === 'FOLD' ? 'bg-rose-600' : 'bg-amber-500 text-black'}`}>
-                              {state.analysis.advice}
-                          </div>
-                          <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p className="text-[11px] text-emerald-100/70 italic leading-relaxed text-center">"{state.analysis.reasoning}"</p>
-                          </div>
-                      </div>
-                  ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 gap-4">
-                          <span className="text-4xl">🂠</span>
-                          <p className="text-xs font-medium max-w-[180px]">Selecciona tus cartas para empezar el cálculo de probabilidades.</p>
-                      </div>
-                  )}
-                  <button onClick={clearTable} className="mt-8 py-3 w-full bg-white/5 hover:bg-white/10 text-[9px] font-black text-white/40 rounded-xl uppercase tracking-widest border border-white/5 transition-colors">Limpiar Mesa</button>
-              </div>
+            <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-white/10 shadow-2xl min-h-[550px] flex flex-col relative overflow-hidden">
+              <h2 className="text-lg font-black text-yellow-400 mb-8 tracking-tighter">ANÁLISIS GTO</h2>
+
+              {state.isAnalyzing ? (
+                <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                  <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                  <p className="text-emerald-500 font-black text-[10px] uppercase tracking-widest animate-pulse">Consultando Oráculo...</p>
+                </div>
+              ) : state.analysis ? (
+                <div className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10">
+                  <div className="relative flex justify-center">
+                    <div className="text-center">
+                      <span className="text-5xl font-black text-white">{Math.round(state.analysis.probability * 100)}%</span>
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase mt-1">Equity Estimada</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                      <span className="text-[8px] font-black text-white/40 uppercase block mb-1">Acción</span>
+                      <span className="text-sm font-black text-yellow-400">{state.analysis.suggestedAction}</span>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                      <span className="text-[8px] font-black text-white/40 uppercase block mb-1">Tamaño</span>
+                      <span className="text-sm font-black text-white">{state.analysis.betSize}</span>
+                    </div>
+                  </div>
+                  <div className={`py-3 px-6 rounded-xl text-center font-black text-sm transition-all ${state.analysis.advice === 'CONTINUE' ? 'bg-emerald-600' : state.analysis.advice === 'FOLD' ? 'bg-rose-600' : 'bg-amber-500 text-black'}`}>
+                    {state.analysis.advice}
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <p className="text-[11px] text-emerald-100/70 italic leading-relaxed text-center">"{state.analysis.reasoning}"</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 gap-4">
+                  <span className="text-4xl">🂠</span>
+                  <p className="text-xs font-medium max-w-[180px]">Selecciona tus cartas para empezar el cálculo de probabilidades.</p>
+                </div>
+              )}
+              <button onClick={clearTable} className="mt-8 py-3 w-full bg-white/5 hover:bg-white/10 text-[9px] font-black text-white/40 rounded-xl uppercase tracking-widest border border-white/5 transition-colors">Limpiar Mesa</button>
+            </div>
           </aside>
         </div>
       )}
