@@ -154,9 +154,21 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Error en análisis:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API Key is required")) {
+
+      const errorMessage = error?.message || '';
+      const isAuthError =
+        errorMessage.includes("Requested entity was not found") ||
+        errorMessage.includes("API Key is required") ||
+        errorMessage.includes("API_KEY_INVALID") ||
+        errorMessage.includes("UNAUTHENTICATED") ||
+        errorMessage.includes("403") ||
+        errorMessage.includes("Failed to execute 'append' on 'Headers'"); // Catch malformed keys
+
+      if (isAuthError) {
+        console.warn("⚠️ Authentication or Key format error detected. Resetting key.");
         setHasKey(false);
         setErrorStatus('auth');
+        localStorage.removeItem('GEMINI_API_KEY'); // Clear bad key
       } else if (error instanceof QuotaError) {
         setErrorStatus('quota');
       } else {
