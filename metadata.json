@@ -1,0 +1,5 @@
+{
+  "name": "Poker Genius - Real-time Odds Calculator",
+  "description": "An interactive poker tool that calculates win probabilities and provides expert advice based on selected hand and board cards using the Gemini API.",
+  "requestFramePermissions": []
+}
