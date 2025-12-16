@@ -9,9 +9,9 @@ export class QuotaError extends Error {
   }
 }
 
-export const analyzeHandHistory = async (rawText: string): Promise<HandHistoryReport> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+export const analyzeHandHistory = async (rawText: string, apiKey?: string): Promise<HandHistoryReport> => {
+  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY });
+
   const prompt = `
     Eres un analista de datos de poker de élite. Analiza el siguiente historial de manos (PokerStars/GG format) y extrae conclusiones estadísticas profundas sobre el "Hero" (el jugador principal).
     
@@ -65,24 +65,25 @@ export const analyzeHandHistory = async (rawText: string): Promise<HandHistoryRe
 };
 
 export const analyzePokerHand = async (
-  hand: Card[], 
-  board: Card[], 
-  position: Position, 
+  hand: Card[],
+  board: Card[],
+  position: Position,
   playerCount: number,
   stackSize: number,
-  opponentProfile: OpponentProfile = 'standard'
+  opponentProfile: OpponentProfile = 'standard',
+  apiKey?: string
 ): Promise<AnalysisResponse> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY });
+
   const handString = hand.map(c => `${c.rank} of ${c.suit}`).join(', ');
   const boardString = board.length > 0 ? board.map(c => `${c.rank} of ${c.suit}`).join(', ') : 'Pre-flop (sin cartas)';
 
   const isHeadsUp = playerCount === 2;
-  
+
   let positionDetail = '';
   if (isHeadsUp) {
-    positionDetail = position === 'dealer' 
-      ? 'Dealer / Ciega Pequeña (Habla primero pre-flop, último post-flop).' 
+    positionDetail = position === 'dealer'
+      ? 'Dealer / Ciega Pequeña (Habla primero pre-flop, último post-flop).'
       : 'Ciega Grande (Habla último pre-flop, primero post-flop).';
   } else {
     const posMap: Record<string, string> = {
@@ -149,7 +150,7 @@ export const analyzePokerHand = async (
       throw new QuotaError("Cuota agotada.");
     }
     if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API_KEY_INVALID")) {
-       throw new Error("Requested entity was not found");
+      throw new Error("Requested entity was not found");
     }
     throw error;
   }
