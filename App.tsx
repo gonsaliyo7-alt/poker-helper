@@ -20,14 +20,16 @@ const PROFILE_INFO: Record<string, string> = {
   standard: "Juega de forma lógica. No regala fichas pero sabe cuándo presionar.",
   aggressive: "Apuesta y sube con rangos amplios. Busca que foldees por miedo.",
   passive: "Paga casi todo pero rara vez sube. Si apuesta fuerte, ¡corre!",
-  bluffer: "Le encanta representar manos que no tiene. Un call aquí tiene más valor."
+  bluffer: "Le encanta representar manos que no tiene. Un call aquí tiene más valor.",
+  loose: "Juega demasiadas manos. Entra en botes con cartas débiles y es propenso a errores."
 };
 
 const PROFILE_ICONS: Record<string, string> = {
   standard: "🧠",
   aggressive: "🔥",
   passive: "🛡️",
-  bluffer: "🎭"
+  bluffer: "🎭",
+  loose: "🎲"
 };
 
 const App: React.FC = () => {

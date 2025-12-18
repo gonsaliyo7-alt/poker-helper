@@ -12,7 +12,8 @@ const HandImporter: React.FC = () => {
     if (!rawText.trim()) return;
     setLoading(true);
     try {
-      const result = await analyzeHandHistory(rawText);
+      const apiKey = localStorage.getItem('GEMINI_API_KEY') || undefined;
+      const result = await analyzeHandHistory(rawText, apiKey);
       setReport(result);
     } catch (e) {
       console.error(e);
@@ -34,15 +35,15 @@ const HandImporter: React.FC = () => {
                 <p className="text-xs text-emerald-300/60 font-medium">Pega aquí el texto de tus manos de PokerStars, GGPoker o 888Poker.</p>
               </div>
             </div>
-            
-            <textarea 
+
+            <textarea
               className="w-full h-64 bg-black/40 border border-white/10 rounded-2xl p-6 text-xs font-mono text-emerald-100/70 focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder:text-emerald-100/20"
               placeholder="PokerStars Hand #23456789... Hero (Ac Ad) raises to 3 BB..."
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
             />
 
-            <button 
+            <button
               onClick={handleProcess}
               disabled={loading || !rawText.trim()}
               className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-2xl transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed uppercase text-xs tracking-widest"
@@ -50,7 +51,7 @@ const HandImporter: React.FC = () => {
               {loading ? "Procesando Big Data..." : "Analizar Mis Errores"}
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-white/5 border border-white/5 rounded-2xl text-center">
               <span className="text-[8px] font-black text-emerald-400 uppercase">Privacidad</span>

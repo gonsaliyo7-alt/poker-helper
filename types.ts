@@ -4,7 +4,7 @@ export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 
 
 export type Position = 'dealer' | 'smallBlind' | 'bigBlind' | 'early' | 'middle' | 'late' | null;
 export type AppMode = 'calculator' | 'training' | 'importer';
-export type OpponentProfile = 'standard' | 'aggressive' | 'passive' | 'bluffer';
+export type OpponentProfile = 'standard' | 'aggressive' | 'passive' | 'bluffer' | 'loose';
 
 export interface Card {
   suit: Suit;

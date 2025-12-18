@@ -37,7 +37,7 @@ export const analyzeHandHistory = async (rawText: string, apiKey?: string): Prom
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -71,8 +71,10 @@ export const analyzePokerHand = async (
   playerCount: number,
   stackSize: number,
   opponentProfile: OpponentProfile = 'standard',
-  apiKey?: string
+  apiKey?: string,
+  userAction?: string // Optional user choice to critique
 ): Promise<AnalysisResponse> => {
+  console.log('🔹 SERVICE: analyzePokerHand called. Has API Key?', !!apiKey);
   const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY });
 
   const handString = hand.map(c => `${c.rank} of ${c.suit}`).join(', ');
@@ -107,25 +109,27 @@ export const analyzePokerHand = async (
     - Mesa (Board): ${boardString}
     - Mi Posición: ${positionDetail}
     - Perfil del Rival: ${opponentProfile}
+    ${userAction ? `- Acción elegida por el usuario: ${userAction}` : ''}
 
     INSTRUCCIONES ESTRATÉGICAS:
     1. Ajusta la agresividad según el stack. Con < 15 BB busca All-in o Fold. Con > 100 BB juega más post-flop.
     2. Sugiere una ACCIÓN específica (Check, Bet, Raise, Fold, All-in).
     3. Si sugieres apostar/subir, indica un TAMAÑO (ej. 33% pot, 2.5 BB, 75% pot).
     4. Explica brevemente la lógica matemática o de rango detrás de la decisión.
+    ${userAction ? `5. EXPLICA ESPECÍFICAMENTE si la acción "${userAction}" del usuario fue correcta o incorrecta según GTO y por qué.` : ''}
 
     RESPONDE EN ESPAÑOL (JSON):
     - probability: (0.0 a 1.0 de victoria)
     - advice: 'CONTINUE', 'FOLD', o 'CAUTION'
     - suggestedAction: Acción recomendada (ej: "Subir / 3-Bet", "Pasar / Llamar")
     - betSize: Tamaño recomendado (ej: "3.5 BB" o "1/2 del Bote")
-    - reasoning: Explicación didáctica.
+    - reasoning: Explicación didáctica ${userAction ? 'incluyendo la crítica a la acción del usuario.' : ''}
     - expectedHand: Mejor jugada actual o proyecto.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
