@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,38 +10,55 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #064e3b; /* Emerald 900 */
+            background-color: #064e3b;
+            /* Emerald 900 */
             color: #f8fafc;
             margin: 0;
         }
+
         .poker-grid {
             display: grid;
             grid-template-columns: repeat(13, minmax(0, 1fr));
             gap: 0.5rem;
         }
+
+        .poker-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(13, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+
         @media (max-width: 1024px) {
-            .poker-grid {
+
+            .poker-grid,
+            .poker-grid-compact {
                 grid-template-columns: repeat(7, minmax(0, 1fr));
             }
         }
+
         @media (max-width: 640px) {
-            .poker-grid {
+
+            .poker-grid,
+            .poker-grid-compact {
                 grid-template-columns: repeat(4, minmax(0, 1fr));
             }
         }
+
         /* Estilos para el scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: #064e3b;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #065f46;
             border-radius: 10px;
         }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "vite": "https://esm.sh/vite@^7.3.0",
@@ -55,8 +72,10 @@
 </script>
 
 </head>
+
 <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

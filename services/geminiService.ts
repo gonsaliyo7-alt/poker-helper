@@ -159,3 +159,71 @@ export const analyzePokerHand = async (
     throw error;
   }
 };
+
+export const analyze3PlayerHand = async (
+  hand: Card[],
+  board: Card[],
+  players: { stack: number, profile: OpponentProfile, position: string, isHero: boolean }[],
+  apiKey?: string
+): Promise<AnalysisResponse> => {
+  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY });
+
+  const handString = hand.map(c => `${c.rank} of ${c.suit}`).join(', ');
+  const boardString = board.length > 0 ? board.map(c => `${c.rank} of ${c.suit}`).join(', ') : 'Pre-flop';
+
+  const playersInfo = players.map(p =>
+    `- ${p.isHero ? 'YO (Hero)' : 'Oponente'}: Posición ${p.position}, Stack ${p.stack} BB, Perfil ${p.profile}`
+  ).join('\n');
+
+  const prompt = `
+    Eres un experto en Poker GTO para mesas cortas (3-Max). Analiza esta situación de 3 jugadores.
+    
+    ESTADO DE LA MESA:
+    ${playersInfo}
+    
+    MIS CARTAS: ${handString}
+    MESA: ${boardString}
+
+    INSTRUCCIONES:
+    1. Analiza el rango de cada jugador basado en su perfil y posición.
+    2. Determina la mejor acción para Hero.
+    3. La respuesta debe sugerir una de estas acciones: Raise, Fold, Check, Call (Check-in) o All-in.
+    
+    RESPONDE EN ESPAÑOL (JSON):
+    - probability: (0.0 a 1.0)
+    - advice: 'CONTINUE', 'FOLD', o 'CAUTION'
+    - suggestedAction: Acción recomendada
+    - betSize: Tamaño de apuesta si aplica
+    - reasoning: Explicación breve y clara
+    - expectedHand: Nuestra jugada actual
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            probability: { type: Type.NUMBER },
+            advice: { type: Type.STRING },
+            suggestedAction: { type: Type.STRING },
+            betSize: { type: Type.STRING },
+            reasoning: { type: Type.STRING },
+            expectedHand: { type: Type.STRING }
+          },
+          required: ["probability", "advice", "suggestedAction", "betSize", "reasoning", "expectedHand"]
+        }
+      }
+    });
+
+    return JSON.parse(response.text || '{}') as AnalysisResponse;
+  } catch (error: any) {
+    if (error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
+      throw new QuotaError("Cuota agotada.");
+    }
+    throw error;
+  }
+};

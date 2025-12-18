@@ -5,6 +5,7 @@ import { FULL_DECK } from './constants';
 import CardUI from './components/CardUI';
 import TrainingMode from './components/TrainingMode';
 import HandImporter from './components/HandImporter';
+import ThreeVSMode from './components/ThreeVSMode';
 import { analyzePokerHand, QuotaError } from './services/geminiService';
 
 const POSITIONS_INFO: Record<string, string> = {
@@ -258,6 +259,7 @@ const App: React.FC = () => {
           </button>
           <nav className="flex bg-black/30 p-1 rounded-xl border border-white/5">
             <button onClick={() => setActiveMode('calculator')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'calculator' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Calculadora</button>
+            <button onClick={() => setActiveMode('threeVS')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'threeVS' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>3VS</button>
             <button onClick={() => setActiveMode('training')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'training' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Entrenamiento</button>
             <button onClick={() => setActiveMode('importer')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMode === 'importer' ? 'bg-yellow-400 text-emerald-950' : 'text-emerald-100 hover:bg-white/5'}`}>Analista</button>
           </nav>
@@ -407,6 +409,7 @@ const App: React.FC = () => {
 
       {activeMode === 'training' && <TrainingMode onOpenKey={handleOpenKey} />}
       {activeMode === 'importer' && <HandImporter />}
+      {activeMode === 'threeVS' && <ThreeVSMode />}
     </div>
   );
 };

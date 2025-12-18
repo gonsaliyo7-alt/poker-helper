@@ -3,8 +3,14 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
 
 export type Position = 'dealer' | 'smallBlind' | 'bigBlind' | 'early' | 'middle' | 'late' | null;
-export type AppMode = 'calculator' | 'training' | 'importer';
+export type AppMode = 'calculator' | 'training' | 'importer' | 'threeVS';
 export type OpponentProfile = 'standard' | 'aggressive' | 'passive' | 'bluffer' | 'loose';
+
+export interface PlayerConfig {
+  stack: number;
+  profile: OpponentProfile;
+  position: 'BTN' | 'SB' | 'BB';
+}
 
 export interface Card {
   suit: Suit;
